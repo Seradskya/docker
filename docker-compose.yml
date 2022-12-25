@@ -1,0 +1,62 @@
+version: '3'
+
+volumes:
+  local_mysql_data: {}
+  node_modules: {}
+
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    platform: linux/x86_64
+    depends_on:
+      - database
+    environment:
+      - DATABASE_URL=mysql://${MYSQL_USER:-user}:${MYSQL_PASSWORD:-user}@database:3306/${MYSQL_DATABASE:-db}
+    volumes:
+      - ./backend:/app:z
+    command: /start
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - node_modules:/app/node_modules
+  database:
+      build:
+          context: .
+          dockerfile: ./docker/mariadb/Dockerfile
+      volumes:
+          - local_mysql_data:/var/lib/mysql
+      platform: linux/x86_64
+      environment:
+          - MYSQL_DATABASE=${MYSQL_DATABASE:-db}
+          - MYSQL_USER=${MYSQL_USER:-user}
+          - MYSQL_PASSWORD=${MYSQL_PASSWORD:-user}
+          - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-user}
+  adminer:
+    build:
+      context: .
+      dockerfile: ./docker/adminer/Dockerfile
+    depends_on:
+        - database
+    environment:
+        - ADMINER_DEFAULT_SERVER=${ADMINER_DEFAULT_SERVER:-database}
+    ports:
+        - "8080:8080"
+  nginx:
+    image: nginx:alpine
+    restart: always
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - "80:80"
+

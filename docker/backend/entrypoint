@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+until aerich upgrade; do
+  >&2 echo 'Waiting for db to become available...'
+  sleep 1
+done
+>&2 echo 'db is available'
+
+exec "$@"
